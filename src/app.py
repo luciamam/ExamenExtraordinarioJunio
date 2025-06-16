@@ -1,10 +1,10 @@
-from flask import Flask,render_template ,flash,request,redirect,url_for
+from flask import Flask,render_template ,flash,request,redirect,url_for,make_response
 from Forms.forms  import RegisterForm,LoginForm
 from flask_bootstrap import Bootstrap4
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from werkzeug.security import check_password_hash,generate_password_hash
-from flask_jwt_extended import JWTManager,get_jwt_identity ,jwt_required
+from flask_jwt_extended import JWTManager,get_jwt_identity ,jwt_required,create_access_token,unset_access_cookies
 import json
 from bson  import ObjectId 
 load_dotenv()
@@ -50,8 +50,16 @@ def register():
         "password":generate_password_hash(datos["password"])
     }
     docuemento_usuario=usuarios.insert_one(usuario)
+    if docuemento_usuario:
+        id_usuario=docuemento_usuario.inserted_id
+        id_usuario=str(id_usuario)
+        response=make_response(redirect(url_for('perfil')))
+        token=create_access_token(identity=str({"id":id_usuario}))
+        response.set_cookie("access_token_cookie",token)
+        return response
+    else: 
 
-    return redirect(url_for('perfil'))
+        return redirect(url_for('register'))
 
 
 
@@ -67,7 +75,14 @@ def login():
     usuario_recuperado= usuarios.find_one({"email":datos["email"]})
     if usuario_recuperado:
         if check_password_hash(usuario_recuperado["password"],datos["password"]):
-            return redirect(url_for('perfil'))
+            id_usuario=usuario_recuperado["_id"]
+            id_usuario=str(id_usuario)
+            response=make_response(redirect(url_for('perfil')))
+            token=create_access_token(identity=str({"id":id_usuario}))
+            response.set_cookie("access_token_cookie",token)
+            return response
+
+            
         else :
             flash("contraseña incorrecta","info")
             return  redirect(url_for('mostrar_login'))
@@ -81,7 +96,28 @@ def login():
 @app.route('/perfil')
 @jwt_required(locations=['cookies'])
 def perfil():
-    return "bienvenido usuario "
+    objeto_token_str=get_jwt_identity()
+    objeto_token_str=objeto_token_str.replace("'",'"')
+    token=json.loads(objeto_token_str)
+    id_token=token["id"]
+    usuario_recuperado=db.usuarios.find_one({"_id":ObjectId(id_token)})
+    usuario=usuario_recuperado
+    return render_template('Perfil_Usuario.html',usuario=usuario)
+
+
+@app.route('/logout')
+def logout():
+    
+    #unset_access_cookies("token")
+    return  "intentando cerrasesion"
+
+
+@app.route('/tienda')
+def tienda():
+    return "aqui esta la tienda "
+
+
+
 
 
 #personalizar el 404
