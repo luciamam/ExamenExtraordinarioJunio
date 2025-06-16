@@ -4,6 +4,9 @@ from flask_bootstrap import Bootstrap4
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from werkzeug.security import check_password_hash,generate_password_hash
+from flask_jwt_extended import JWTManager,get_jwt_identity ,jwt_required
+import json
+from bson  import ObjectId 
 load_dotenv()
 import os
 
@@ -18,6 +21,7 @@ Bootstrap4(app)
 client=MongoClient("mongodb://localhost:27017/")
 db=client["ExamenExtraordinarioJunio"]
 usuarios=db["usuarios"]
+jwt=JWTManager(app)
 
 
 
@@ -51,12 +55,10 @@ def register():
 
 
 
-
 @app.route('/login')
 def mostrar_login():
     form=LoginForm()
     return  render_template('Login.html',form=form)
-
 
 
 @app.route('/login',methods=['POST'])
@@ -73,7 +75,11 @@ def login():
         return redirect(url_for("register"))
 
 
+
+
+# para poder recuperar el nombre del usuario voy a usar el jwt token  y voy a proteger esta ruta 
 @app.route('/perfil')
+@jwt_required(locations=['cookies'])
 def perfil():
     return "bienvenido usuario "
 
@@ -84,7 +90,11 @@ def NotFound(mensaje):
     return render_template('NotFound.html')
 
 
+#capturar el error del 401
 
+@jwt.unauthorized_loader
+def capturar(mensaje):
+    return redirect(url_for('mostrar_register'))
 
 
 
