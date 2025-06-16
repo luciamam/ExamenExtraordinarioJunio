@@ -1,7 +1,9 @@
-from flask import Flask,render_template 
+from flask import Flask,render_template ,flash,request,redirect,url_for
 from Forms.forms  import RegisterForm,LoginForm
 from flask_bootstrap import Bootstrap4
 from dotenv import load_dotenv
+from pymongo import MongoClient
+from werkzeug.security import check_password_hash,generate_password_hash
 load_dotenv()
 import os
 
@@ -13,6 +15,9 @@ import os
 app=Flask(__name__)
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 Bootstrap4(app)
+client=MongoClient("mongodb://localhost:27017/")
+db=client["ExamenExtraordinarioJunio"]
+usuarios=db["usuarios"]
 
 
 
@@ -32,7 +37,17 @@ def mostrar_register():
 
 @app.route('/register',methods=['POST'])
 def register():
-    return "usuario registrado "
+    datos=request.form
+    #por seguridad , en caso de hacerse uno con la base de datos voy hashear la constraseña 
+    #para no guardarla en texto plano 
+    usuario={
+        "name":datos["name"],
+        "email":datos["email"],
+        "password":generate_password_hash(datos["password"])
+    }
+    docuemento_usuario=usuarios.insert_one(usuario)
+
+    return redirect(url_for('perfil'))
 
 
 
@@ -46,9 +61,21 @@ def mostrar_login():
 
 @app.route('/login',methods=['POST'])
 def login():
-    return "usuario iniciando sesion"
-    
+    datos=request.form
+    usuario_recuperado= usuarios.find_one({"email":datos["email"]})
+    if usuario_recuperado:
+        if check_password_hash(usuario_recuperado["password"],datos["password"]):
+            return redirect(url_for('perfil'))
+        else :
+            flash("contraseña incorrecta","info")
+            return  redirect(url_for('mostrar_login'))
+    else:
+        return redirect(url_for("register"))
 
+
+@app.route('/perfil')
+def perfil():
+    return "bienvenido usuario "
 
 
 #personalizar el 404
