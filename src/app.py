@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash,generate_password_hash
 from flask_jwt_extended import JWTManager,get_jwt_identity ,jwt_required,create_access_token,unset_access_cookies
 import json
 from bson  import ObjectId 
+from Forms.productos import productosA
 load_dotenv()
 import os
 
@@ -21,6 +22,7 @@ Bootstrap4(app)
 client=MongoClient("mongodb://localhost:27017/")
 db=client["ExamenExtraordinarioJunio"]
 usuarios=db["usuarios"]
+productos=db["productos"]
 jwt=JWTManager(app)
 
 
@@ -114,10 +116,17 @@ def logout():
 
 @app.route('/tienda')
 def tienda():
-    return "aqui esta la tienda "
+    productos.insert_many(productosA)
+    
+    return  redirect(url_for('mostrar_productos'))
 
 
 
+@app.route('/productos')
+def mostrar_productos():
+    listaproductos =list(db.productos.find())
+    productos=listaproductos
+    return render_template('Productos.html',productos=productos)
 
 
 #personalizar el 404
